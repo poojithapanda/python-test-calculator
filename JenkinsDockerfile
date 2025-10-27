@@ -1,0 +1,76 @@
+
+# which is basically another renamed Dockerfile 
+# so as to differentiate it from the one existing
+# sets up the first container layer
+FROM jenkins/jenkins:lts
+# pulls the LONG TERM SUPPORT Jenkins image
+# now this will be the image on top which we install Docker.
+
+LABEL maintainer="poojithapanda7@gmail.com"
+# adds metadata to image
+
+
+USER root
+# switches the user context inside the image from the default jenkins user
+# to root user so that we can install docker (admin permissions)
+
+
+# Install necessary tools
+RUN apt-get update -qq \
+    && apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+
+# installs essential utilities 
+# (curl, gnupg, lsb-release, etc.) into the Jenkins environment.
+# These tools are required to download and securely install the Docker repository and GPG keys.
+# gpg key is like a signature to verify authenticity of software
+# docker has a gpg key to verify its packages
+
+
+# Add Docker's official GPG key and repository
+RUN install -m 0755 -d /etc/apt/keyrings
+# make the directory to store gpg keys
+# What it is: The Docker GPG Key is a cryptographic key used 
+# to verify the authenticity of the official Docker installation packages (like docker-ce, docker-ce-cli) that you are installing inside the Jenkins container.
+# Why it's needed: When you use apt-get install docker-ce..., 
+# the system downloads the Docker software from Docker's external server 
+# (the "Docker repository"). The GPG key allows your operating system 
+# Debian, inside the Jenkins container) to verify the digital signature 
+# of the package, ensuring that the software you downloaded hasn't been
+# tampered with by a third party.
+# It is one key that Docker, Inc. uses to digitally sign all of their official software packages (like docker-ce, docker-cli, etc.).
+
+# Anyone in the world using an apt-based Linux system
+#  (like Debian or Ubuntu) who wants to install the official 
+#  Docker software must download and install this same public key 
+#  to verify the packages
+
+# The key is installed only in the operating system of the container you are building
+# so in this jenkins container only
+
+
+
+
+
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+# Downloads Docker's official cryptographic key and adds it securely to the system's keyring.
+
+RUN echo \
+  "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+  $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+# Adds the official Docker Debian repository to the list of places the system looks for software.
+
+
+# Install the docker CLI and related compoennts into jenkins image
+# It allows Jenkins to use commands like docker build and docker run.
+# we needed the key to run this bc we need to trust source of 
+# this is the docker client****
+RUN apt-get update -qq \
+    && apt-get install docker-ce docker-ce-cli containerd.io -y
+
+# USER jenkins
+# Switches the user context back to the low-privilege jenkins user.
+# Standard practice to run the final application (Jenkins) with minimal privileges.
+# This enhances security by limiting potential damage from vulnerabilities.
+
+# this allows the Docker client you installed inside Jenkins (Container 1) to communicate directly with the Host's Docker Engine, enabling Jenkins to launch Container 2.
